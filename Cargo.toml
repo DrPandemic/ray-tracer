@@ -1,0 +1,12 @@
+[package]
+name = "ray"
+version = "0.1.0"
+authors = ["DrPandemic <bipbip500@gmail.com>"]
+edition = "2018"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
