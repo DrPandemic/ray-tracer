@@ -55,6 +55,6 @@ impl Hitable for Sphere {
     }
 }
 
-pub struct HitableList {
-    pub list:Box<Vec<dyn Hitable>>,
-}
+// pub struct HitableList {
+//     pub list: Box<Vec<dyn Hitable>>,
+// }
