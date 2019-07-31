@@ -9,6 +9,18 @@ pub struct HitRecord {
     pub normal: Position,
 }
 
+impl HitRecord {
+    pub fn default() -> HitRecord {
+        HitRecord { t: 0.0, p: Position::new(0.0, 0.0, 0.0), normal: Position::new(0.0, 0.0, 0.0) }
+    }
+
+    pub fn clone(&mut self, other: &HitRecord) {
+        self.t = other.t;
+        self.p = other.p;
+        self.normal = other.normal;
+    }
+}
+
 pub trait Hitable {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, hit_record: &mut HitRecord) -> bool;
 }
@@ -55,6 +67,31 @@ impl Hitable for Sphere {
     }
 }
 
-// pub struct HitableList {
-//     pub list: Box<Vec<dyn Hitable>>,
-// }
+pub struct HitableList {
+    pub list: Vec<Box<dyn Hitable>>,
+}
+
+impl HitableList {
+    pub fn new(list: Vec<Box<dyn Hitable>>) -> HitableList {
+        HitableList {
+            list: list
+        }
+    }
+}
+
+impl Hitable for HitableList {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, record: &mut HitRecord) -> bool {
+        let mut tmp_record = HitRecord::default();
+        let mut hit_anything = false;
+        let mut closest_so_far = t_max;
+        for item in self.list.iter() {
+            if item.hit(&ray, t_min, closest_so_far, &mut tmp_record) {
+                hit_anything = true;
+                closest_so_far = tmp_record.t;
+                record.clone(&tmp_record);
+            }
+        }
+
+        hit_anything
+    }
+}
