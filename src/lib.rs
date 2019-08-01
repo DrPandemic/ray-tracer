@@ -39,15 +39,15 @@ fn hit_sphere(center: &Position, radius: f64, ray: &Ray) -> f64 {
 }
 
 
+#[allow(unstable_name_collisions)]
 fn color(ray: &Ray, world: &Hitable) -> Color {
-    let mut record = HitRecord::default();
-    if world.hit(&ray, 0.0, f64::MAX, &mut record) {
-        0.5 * Color::new(record.normal.x + 1.0, record.normal.y + 1.0, record.normal.z + 1.0)
-    } else {
+    world.hit(&ray, 0.0, f64::MAX).map_or_else(|_| {
         let unit_direction = ray.direction().unit_vector();
         let t = 0.5 * (unit_direction.y + 1.0);
         (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
-    }
+    }, |record| {
+        0.5 * Color::new(record.normal.x + 1.0, record.normal.y + 1.0, record.normal.z + 1.0)
+    })
 }
 
 #[wasm_bindgen]

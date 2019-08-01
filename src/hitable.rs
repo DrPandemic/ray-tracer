@@ -14,6 +14,10 @@ impl HitRecord {
         HitRecord { t: 0.0, p: Position::new(0.0, 0.0, 0.0), normal: Position::new(0.0, 0.0, 0.0) }
     }
 
+    pub fn new(t: f64, p: Position, normal: Position) -> HitRecord {
+        HitRecord { t: t, p: p, normal: normal }
+    }
+
     pub fn clone(&mut self, other: &HitRecord) {
         self.t = other.t;
         self.p = other.p;
@@ -22,7 +26,7 @@ impl HitRecord {
 }
 
 pub trait Hitable {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, hit_record: &mut HitRecord) -> bool;
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Result<HitRecord, ()>;
 }
 
 pub struct Sphere {
@@ -47,7 +51,7 @@ impl Sphere {
 }
 
 impl Hitable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, record: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Result<HitRecord, ()> {
         let oc = ray.origin() - self.center;
         let a = dot(*ray.direction(), *ray.direction());
         let b = 2.0 * dot(oc, *ray.direction());
@@ -56,14 +60,12 @@ impl Hitable for Sphere {
         if discriminant > 0.0 {
             let tmp = (-b - discriminant.sqrt()) / (2.0 * a);
             if tmp < t_max && tmp > t_min {
-                record.t = tmp;
-                record.p = ray.point_at_parameter(tmp);
-                record.normal = (record.p - self.center) / self.radius;
-                return true;
+                let p = ray.point_at_parameter(tmp);
+                return Ok(HitRecord::new(tmp, p, (p - self.center) / self.radius))
             }
         }
 
-        false
+        Err(())
     }
 }
 
@@ -80,18 +82,15 @@ impl HitableList {
 }
 
 impl Hitable for HitableList {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64, record: &mut HitRecord) -> bool {
-        let mut tmp_record = HitRecord::default();
-        let mut hit_anything = false;
-        let mut closest_so_far = t_max;
-        for item in self.list.iter() {
-            if item.hit(&ray, t_min, closest_so_far, &mut tmp_record) {
-                hit_anything = true;
-                closest_so_far = tmp_record.t;
-                record.clone(&tmp_record);
-            }
-        }
-
-        hit_anything
+    #[allow(unstable_name_collisions)]
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Result<HitRecord, ()> {
+        self.list.iter().fold(
+            (t_max, Err(())),
+            |(closest_so_far, previous), item|
+                item.hit(&ray, t_min, closest_so_far).map_or_else(
+                    |_| (closest_so_far, previous),
+                    |record| (record.t, Ok(record))
+                )
+        ).1
     }
 }

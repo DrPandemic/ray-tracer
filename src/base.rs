@@ -25,3 +25,13 @@ impl Vec3 for Vector3<f64> {
         self / self.length()
     }
 }
+
+pub trait OrElse<T, E> {
+    fn map_or_else<U, M: FnOnce(T) -> U, F: FnOnce(E) -> U>(self, fallback: F, map: M) -> U;
+}
+
+impl <T, E> OrElse<T, E> for Result<T, E> {
+    fn map_or_else<U, M: FnOnce(T) -> U, F: FnOnce(E) -> U>(self, fallback: F, map: M) -> U {
+        self.map(map).unwrap_or_else(fallback)
+    }
+}
