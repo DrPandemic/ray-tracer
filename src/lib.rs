@@ -1,18 +1,23 @@
 extern crate wasm_bindgen;
 extern crate cgmath;
+extern crate rand;
 
 pub mod canvas;
 pub mod base;
 pub mod ray;
 pub mod hitable;
+pub mod camera;
+pub mod material;
 
 use wasm_bindgen::prelude::*;
-use cgmath::dot;
 use std::f64;
+use std::rc::Rc;
 use crate::canvas::*;
 use crate::base::*;
 use crate::ray::*;
 use crate::hitable::*;
+use crate::camera::*;
+use crate::material::*;
 
 #[wasm_bindgen]
 extern {
@@ -24,29 +29,28 @@ extern {
     fn log_f64(a: f64);
 }
 
-// t*t*dot(B, B) + 2*t*dot(B,A-C) + dot(A-C,A-C) - R*R = 0
-fn hit_sphere(center: &Position, radius: f64, ray: &Ray) -> f64 {
-    let oc = ray.origin() - center;
-    let a = dot(*ray.direction(), *ray.direction());
-    let b = 2.0 * dot(oc, *ray.direction());
-    let c = dot(oc, oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-    if discriminant < 0.0 {
-        -1.0
-    } else {
-        (-b - discriminant.sqrt()) / (2.0 * a)
-    }
-}
-
-
 #[allow(unstable_name_collisions)]
-fn color(ray: &Ray, world: &Hitable) -> Color {
-    world.hit(&ray, 0.0, f64::MAX).map_or_else(|_| {
+fn color(ray: &Ray, world: &Hitable, depth: u8) -> Color {
+    world.hit(&ray, 0.001, f64::MAX).map_or_else(|_| {
         let unit_direction = ray.direction().unit_vector();
         let t = 0.5 * (unit_direction.y + 1.0);
         (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
     }, |record| {
-        0.5 * Color::new(record.normal.x + 1.0, record.normal.y + 1.0, record.normal.z + 1.0)
+        if depth > 50 {
+            Color::new(0.0, 0.0, 0.0)
+        } else {
+            let (
+                got_scaterred,
+                attenuation,
+                scattered,
+            ) = record.material.scatter(&ray, record.clone());
+
+            if !got_scaterred {
+                Color::new(0.0, 0.0, 0.0)
+            } else {
+                attenuation.mul(&color(&scattered, world, depth + 1))
+            }
+        }
     })
 }
 
@@ -55,33 +59,41 @@ pub fn main() {
     let context = get_context();
     let nx = 200;
     let ny = 100;
-
-    let lower_left_corner = Position::new(-2.0, -1.0, -1.0);
-    let horizontal = Position::new(4.0, 0.0, 0.0);
-    let vertical = Position::new(0.0, 2.0, 0.0);
-    let origin = Position::new(0.0, 0.0, 0.0);
+    let ns = 100;
 
     let list = vec![
-        Box::new(Sphere::new(Position::new(0.0, 0.0, -1.0), 0.5)) as Box<Hitable>,
-        Box::new(Sphere::new(Position::new(0.0, -100.5, -1.0), 100.0)) as Box<Hitable>,
+        Box::new(Sphere::new(Position::new(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(&Color::new(0.8, 0.3, 0.3))))) as Box<Hitable>,
+        Box::new(Sphere::new(Position::new(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(&Color::new(0.3, 0.8, 0.3))))) as Box<Hitable>,
+        Box::new(Sphere::new(Position::new(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 1.0)))) as Box<Hitable>,
+        Box::new(Sphere::new(Position::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.8, 0.8), 0.2)))) as Box<Hitable>,
     ];
 
     let world = HitableList::new(list);
+    let camera = Camera::new();
 
     for j in (0..ny).rev() {
         for i in 0..nx {
-            let u = f64::from(i) / f64::from(nx);
-            let v = f64::from(j) / f64::from(ny);
-            let ray = Ray::new(origin, lower_left_corner + u * horizontal + v * vertical);
+            let mut col = Color::new(0.0, 0.0, 0.0);
+
+            for _ in 0..ns {
+                let u = (f64::from(i) + random()) / f64::from(nx);
+                let v = (f64::from(j) + random()) / f64::from(ny);
+                let ray = camera.get_ray(u, v);
+                col += color(&ray, &world, 0);
+            }
+
+            col /= f64::from(ns);
+            col.x = col.x.sqrt();
+            col.y = col.y.sqrt();
+            col.z = col.z.sqrt();
 
             draw_pixel(
                 &context,
                 Pixel {
                     position: Position::new(f64::from(i), f64::from(ny - j), 0.0),
-                    color: color(&ray, &world)
+                    color: col
                 }
             );
         }
     }
-    // alert(&format!("Hello, {:?}!", Vector3::new(1.0, 2.0, 3.0)));
 }
