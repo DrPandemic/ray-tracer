@@ -8,8 +8,8 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct HitRecord {
     pub t: f64,
-    pub p: Position,
-    pub normal: Position,
+    pub p: Vec3,
+    pub normal: Vec3,
     pub material: Rc<Material>,
 }
 
@@ -17,13 +17,13 @@ impl HitRecord {
     pub fn default() -> HitRecord {
         HitRecord {
             t: 0.0,
-            p: Position::new(0.0, 0.0, 0.0),
-            normal: Position::new(0.0, 0.0, 0.0),
+            p: Vec3::new(0.0, 0.0, 0.0),
+            normal: Vec3::new(0.0, 0.0, 0.0),
             material: Rc::new(Lambertian::new(&Color::new(0.3, 0.3, 0.3))),
         }
     }
 
-    pub fn new(t: f64, p: Position, normal: Position, material: Rc<Material>) -> HitRecord {
+    pub fn new(t: f64, p: Vec3, normal: Vec3, material: Rc<Material>) -> HitRecord {
         HitRecord { t: t, p: p, normal: normal, material: material }
     }
 
@@ -50,7 +50,7 @@ pub trait Hitable {
 
 #[derive(Clone)]
 pub struct Sphere {
-    pub center: Position,
+    pub center: Vec3,
     pub radius: f64,
     pub material: Rc<Material>,
 }
@@ -58,13 +58,13 @@ pub struct Sphere {
 impl Sphere {
     pub fn default() -> Sphere {
         Sphere {
-            center: Position::new(0.0, 0.0, 0.0),
+            center: Vec3::new(0.0, 0.0, 0.0),
             radius: 1.0,
             material: Rc::new(Lambertian::new(&Color::new(0.8, 0.3, 0.3))),
         }
     }
 
-    pub fn new(center: Position, radius: f64, material: Rc<Material>) -> Sphere {
+    pub fn new(center: Vec3, radius: f64, material: Rc<Material>) -> Sphere {
         Sphere {
             center: center,
             radius: radius,

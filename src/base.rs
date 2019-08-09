@@ -5,20 +5,20 @@ use rand::{thread_rng, Rng};
 use std::iter;
 
 pub type Color = Vector3<f64>;
-pub type Position = Vector3<f64>;
+pub type Vec3 = Vector3<f64>;
 pub struct Pixel {
     pub color: Color,
-    pub position: Position,
+    pub position: Vec3,
 }
 
-pub trait Vec3 {
+pub trait Vec3Ext {
     fn length(&self) -> f64;
     fn squared_length(&self) -> f64;
     fn unit_vector(&self) -> Vector3<f64>;
     fn mul(&self, rhs: &Vector3<f64>) -> Vector3<f64>;
 }
 
-impl Vec3 for Vector3<f64> {
+impl Vec3Ext for Vector3<f64> {
     fn length(&self) -> f64 {
         self.squared_length().sqrt()
     }
@@ -52,10 +52,10 @@ pub fn random() -> f64 {
     thread_rng().gen_range(0.0f64, 1.0f64)
 }
 
-pub fn random_in_unit_sphere() -> Position {
-    iter::repeat(None).find_map(|_: Option<Position>| {
+pub fn random_in_unit_sphere() -> Vec3 {
+    iter::repeat(None).find_map(|_: Option<Vec3>| {
         // TODO vec - vec is broken
-        let p = 2.0 * Position::new(random(), random(), random()) - Position::new(1.0, 1.0, 1.0);
+        let p = 2.0 * Vec3::new(random(), random(), random()) - Vec3::new(1.0, 1.0, 1.0);
         if p.squared_length() < 1.0 {
             Some(p)
         } else {

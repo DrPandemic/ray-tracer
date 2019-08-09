@@ -1,24 +1,24 @@
 use crate::base::*;
 
 pub struct Ray {
-    pub a: Position,
-    pub b: Position,
+    pub a: Vec3,
+    pub b: Vec3,
 }
 
 impl Ray {
-    pub fn new(a: Position, b: Position) -> Ray {
+    pub fn new(a: Vec3, b: Vec3) -> Ray {
         Ray { a: a, b: b }
     }
 
-    pub fn origin(&self) -> &Position {
+    pub fn origin(&self) -> &Vec3 {
         &self.a
     }
 
-    pub fn direction(&self) -> &Position {
+    pub fn direction(&self) -> &Vec3 {
         &self.b
     }
 
-    pub fn point_at_parameter(&self, t: f64) -> Position {
+    pub fn point_at_parameter(&self, t: f64) -> Vec3 {
         self.a + t * self.b
     }
 }

@@ -39,17 +39,10 @@ fn color(ray: &Ray, world: &Hitable, depth: u8) -> Color {
         if depth > 50 {
             Color::new(0.0, 0.0, 0.0)
         } else {
-            let (
-                got_scaterred,
-                attenuation,
-                scattered,
-            ) = record.material.scatter(&ray, record.clone());
-
-            if !got_scaterred {
-                Color::new(0.0, 0.0, 0.0)
-            } else {
-                attenuation.mul(&color(&scattered, world, depth + 1))
-            }
+            record.material.scatter(&ray, record.clone())
+                .map_or_else(
+                    || Color::new(0.0, 0.0, 0.0),
+                    |(ref attenuation, ref scattered)| attenuation.mul(&color(&scattered, world, depth + 1)))
         }
     })
 }
@@ -62,10 +55,11 @@ pub fn main() {
     let ns = 100;
 
     let list = vec![
-        Box::new(Sphere::new(Position::new(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(&Color::new(0.8, 0.3, 0.3))))) as Box<Hitable>,
-        Box::new(Sphere::new(Position::new(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(&Color::new(0.3, 0.8, 0.3))))) as Box<Hitable>,
-        Box::new(Sphere::new(Position::new(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 1.0)))) as Box<Hitable>,
-        Box::new(Sphere::new(Position::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.8, 0.8), 0.2)))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(&Color::new(0.8, 0.3, 0.3))))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(&Color::new(0.3, 0.8, 0.3))))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 0.05)))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Dialectric::new(1.5)))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.45, Rc::new(Dialectric::new(1.5)))) as Box<Hitable>,
     ];
 
     let world = HitableList::new(list);
@@ -90,7 +84,7 @@ pub fn main() {
             draw_pixel(
                 &context,
                 Pixel {
-                    position: Position::new(f64::from(i), f64::from(ny - j), 0.0),
+                    position: Vec3::new(f64::from(i), f64::from(ny - j), 0.0),
                     color: col
                 }
             );
