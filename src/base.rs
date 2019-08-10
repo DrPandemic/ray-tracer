@@ -6,6 +6,7 @@ use std::iter;
 
 pub type Color = Vector3<f64>;
 pub type Vec3 = Vector3<f64>;
+#[derive(Clone, Copy)]
 pub struct Pixel {
     pub color: Color,
     pub position: Vec3,

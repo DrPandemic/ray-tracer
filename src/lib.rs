@@ -10,8 +10,8 @@ pub mod camera;
 pub mod material;
 
 use wasm_bindgen::prelude::*;
+use std::cell::RefCell;
 use std::f64;
-use std::f64::consts::PI;
 use std::rc::Rc;
 use crate::canvas::*;
 use crate::base::*;
@@ -31,7 +31,7 @@ extern {
 }
 
 #[allow(unstable_name_collisions)]
-fn color(ray: &Ray, world: &Hitable, depth: u8) -> Color {
+fn color(ray: &Ray, world: &Box<Hitable>, depth: u8) -> Color {
     world.hit(&ray, 0.001, f64::MAX).map_or_else(|_| {
         let unit_direction = ray.direction().unit_vector();
         let t = 0.5 * (unit_direction.y + 1.0);
@@ -48,59 +48,99 @@ fn color(ray: &Ray, world: &Hitable, depth: u8) -> Color {
     })
 }
 
+thread_local!(static NEXT_X: RefCell<u16> = RefCell::new(0));
+thread_local!(static NEXT_Y: RefCell<u16> = RefCell::new(0));
+thread_local!(static WORLD: RefCell<Box<dyn Hitable>> = RefCell::new(random_scene()));
+
 #[wasm_bindgen]
-pub fn main() {
-    let context = get_context();
+pub fn run() -> bool {
     let nx = 200;
     let ny = 100;
-    let ns = 100;
+    let ns = 4;
+    let context = get_context();
 
-    let list = vec![
-        Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(&Color::new(0.8, 0.3, 0.3))))) as Box<Hitable>,
-        Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(&Color::new(0.3, 0.8, 0.3))))) as Box<Hitable>,
-        Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 0.05)))) as Box<Hitable>,
-        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Dialectric::new(1.6)))) as Box<Hitable>,
-        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.45, Rc::new(Dialectric::new(1.6)))) as Box<Hitable>,
-    ];
-
-    let world = HitableList::new(list);
-
-
-    let lookfrom = Vec3::new(3.0, 3.0, 2.0);
-    let lookat = Vec3::new(0.0, 0.0, -1.0);
+    let lookfrom = Vec3::new(13.0, 2.0, 4.0);
+    let lookat = Vec3::new(-2.0, 1.0, -1.0);
     let camera = Camera::new(
         lookfrom,
         lookat,
         Vec3::new(0.0, 1.0, 0.0),
         20.0,
         f64::from(nx) / f64::from(ny),
-        2.0,
+        0.2,
         (lookfrom - lookat).length()
     );
 
-    for j in (0..ny).rev() {
-        for i in 0..nx {
-            let mut col = Color::new(0.0, 0.0, 0.0);
+    NEXT_X.with(|x| {
+        NEXT_Y.with(|y| {
+            let mut current_x = x.borrow_mut();
+            let mut current_y = y.borrow_mut();
+            let x = f64::from(current_x.clone());
+            let y = f64::from(current_y.clone());
+            WORLD.with(|w| {
+                let world = w.borrow();
 
-            for _ in 0..ns {
-                let u = (f64::from(i) + random()) / f64::from(nx);
-                let v = (f64::from(j) + random()) / f64::from(ny);
-                let ray = camera.get_ray(u, v);
-                col += color(&ray, &world, 0);
-            }
+                let mut col = Color::new(0.0, 0.0, 0.0);
 
-            col /= f64::from(ns);
-            col.x = col.x.sqrt();
-            col.y = col.y.sqrt();
-            col.z = col.z.sqrt();
-
-            draw_pixel(
-                &context,
-                Pixel {
-                    position: Vec3::new(f64::from(i), f64::from(ny - j), 0.0),
-                    color: col
+                for _ in 0..ns {
+                    let u = (x + random()) / f64::from(nx);
+                    let v = (y + random()) / f64::from(ny);
+                    let ray = camera.get_ray(u, v);
+                    col += color(&ray, &world, 0);
                 }
-            );
+
+                col /= f64::from(ns);
+                col.x = col.x.sqrt();
+                col.y = col.y.sqrt();
+                col.z = col.z.sqrt();
+
+                draw_pixel(
+                    &context,
+                    Pixel {
+                        position: Vec3::new(x, f64::from(ny) - y, 0.0),
+                        color: col
+                    }
+                );
+
+                let next_x = (current_x.clone() + 1) % nx;
+                let next_y = if next_x == 0 {
+                    (current_y.clone() + 1) % ny
+                } else {
+                    current_y.clone()
+                };
+                *current_x = next_x;
+                *current_y = next_y;
+
+                return next_x == 0 && next_y == 0
+            });
+        });
+    });
+    false
+}
+
+fn random_scene() -> Box<dyn Hitable> {
+    let mut list = Vec::new();
+    list.push(Box::new(Sphere::new(Vec3::new(0.0, -1000.0, 0.0), 1000.0, Rc::new(Lambertian::new(&Color::new(0.5, 0.5, 0.5))))) as Box<Hitable>);
+    list.push(Box::new(Sphere::new(Vec3::new(0.0, 1.0, 0.0), 1.0, Rc::new(Dialectric::new(1.5)))) as Box<Hitable>);
+    list.push(Box::new(Sphere::new(Vec3::new(-4.0, 1.0, 0.0), 1.0, Rc::new(Lambertian::new(&Color::new(0.4, 0.2, 0.1))))) as Box<Hitable>);
+    list.push(Box::new(Sphere::new(Vec3::new(4.0, 1.0, 0.0), 1.0, Rc::new(Metal::new(&Color::new(0.5, 0.5, 0.5), 0.0)))) as Box<Hitable>);
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = random();
+            let center = Vec3::new(f64::from(a) + 0.9 * random(), 0.2, f64::from(b) + 0.9 * random());
+            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                if choose_mat < 0.7 { // diffuse
+                    list.push(Box::new(Sphere::new(center, 0.2, Rc::new(Lambertian::new(&Color::new(random() * random(), random() * random(), random() * random()))))) as Box<Hitable>);
+                }
+            } else if choose_mat < 0.85 { // metal
+                list.push(Box::new(Sphere::new(center, 0.2, Rc::new(Metal::new(&Color::new(0.5 * (1.0 + random()), 0.5 * (1.0 + random()), 0.5 * (1.0 + random())), 0.5 * random())))) as Box<Hitable>);
+            } else { // glass
+                list.push(Box::new(Sphere::new(center, 0.2, Rc::new(Dialectric::new(1.5)))) as Box<Hitable>);
+            }
         }
     }
+
+
+    Box::new(HitableList::new(list))
 }

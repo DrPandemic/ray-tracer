@@ -1,4 +1,8 @@
 const js = import("../pkg/ray.js");
 js.then(js => {
-    js.main();
+    run();
+    function run() {
+        js.run() || setTimeout(() => run(), 0);
+    }
 });
+
