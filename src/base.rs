@@ -1,5 +1,5 @@
 extern crate cgmath;
-use cgmath::Vector3;
+use cgmath::{Vector3, dot};
 use std::f64;
 use rand::{thread_rng, Rng};
 use std::iter;
@@ -54,9 +54,19 @@ pub fn random() -> f64 {
 
 pub fn random_in_unit_sphere() -> Vec3 {
     iter::repeat(None).find_map(|_: Option<Vec3>| {
-        // TODO vec - vec is broken
         let p = 2.0 * Vec3::new(random(), random(), random()) - Vec3::new(1.0, 1.0, 1.0);
         if p.squared_length() < 1.0 {
+            Some(p)
+        } else {
+            None
+        }
+    }).unwrap()
+}
+
+pub fn random_in_unit_disk() -> Vec3 {
+    iter::repeat(None).find_map(|_: Option<Vec3>| {
+        let p = 2.0 * Vec3::new(random(), random(), random()) - Vec3::new(1.0, 1.0, 0.0);
+        if dot(p, p) < 1.0 {
             Some(p)
         } else {
             None

@@ -11,6 +11,7 @@ pub mod material;
 
 use wasm_bindgen::prelude::*;
 use std::f64;
+use std::f64::consts::PI;
 use std::rc::Rc;
 use crate::canvas::*;
 use crate::base::*;
@@ -58,12 +59,24 @@ pub fn main() {
         Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5, Rc::new(Lambertian::new(&Color::new(0.8, 0.3, 0.3))))) as Box<Hitable>,
         Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0, Rc::new(Lambertian::new(&Color::new(0.3, 0.8, 0.3))))) as Box<Hitable>,
         Box::new(Sphere::new(Vec3::new(1.0, 0.0, -1.0), 0.5, Rc::new(Metal::new(&Color::new(0.8, 0.6, 0.2), 0.05)))) as Box<Hitable>,
-        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Dialectric::new(1.5)))) as Box<Hitable>,
-        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.45, Rc::new(Dialectric::new(1.5)))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), 0.5, Rc::new(Dialectric::new(1.6)))) as Box<Hitable>,
+        Box::new(Sphere::new(Vec3::new(-1.0, 0.0, -1.0), -0.45, Rc::new(Dialectric::new(1.6)))) as Box<Hitable>,
     ];
 
     let world = HitableList::new(list);
-    let camera = Camera::new();
+
+
+    let lookfrom = Vec3::new(3.0, 3.0, 2.0);
+    let lookat = Vec3::new(0.0, 0.0, -1.0);
+    let camera = Camera::new(
+        lookfrom,
+        lookat,
+        Vec3::new(0.0, 1.0, 0.0),
+        20.0,
+        f64::from(nx) / f64::from(ny),
+        2.0,
+        (lookfrom - lookat).length()
+    );
 
     for j in (0..ny).rev() {
         for i in 0..nx {
